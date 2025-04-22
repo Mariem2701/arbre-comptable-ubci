@@ -1,40 +1,4 @@
 import streamlit as st
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
-from datetime import datetime
-
-# Connexion à Google Sheets via secrets
-@st.cache_resource
-def connect_sheet():
-    scope = [
-        "https://spreadsheets.google.com/feeds",
-        "https://www.googleapis.com/auth/spreadsheets",
-        "https://www.googleapis.com/auth/drive"
-    ]
-    creds_dict = st.secrets["google_service_account"]
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(dict(creds_dict), scope)
-    client = gspread.authorize(creds)
-    sheet = client.open_by_url("https://docs.google.com/spreadsheets/d/1oLsgO9f-4-b8-VAX_fvX3QVdqjIV0c9yfH-KK4kkmtI").sheet1
-    return sheet
-
-sheet = connect_sheet()
-
-# Fonction pour enregistrer chaque réponse
-def enregistrer_reponse(question_id, libelle, reponse, service):
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    sheet.append_row([str(question_id), libelle, str(reponse), service, timestamp])
-
-
-
-
-
-
-
-
-
-
-
-import streamlit as st
 
 st.set_page_config(page_title="UBCI - Arbre Comptable", layout="centered")
 st.title("🏦 UBCI – Arbre de Décision Comptable Logique")
@@ -184,10 +148,8 @@ if next_q is not None:
             val = st.radio("Réponse :", options, key=key, index=None)
         elif qtype == "checkbox":
             val = st.checkbox("Cocher si applicable", key=key)
-
         if st.button("✅ Valider la réponse"):
             r[next_q] = val
-            enregistrer_reponse(next_q, label, val, service_connecte)
             st.rerun()
     else:
         st.info(f"🕒 En attente de réponse du service **{service_resp}**")
