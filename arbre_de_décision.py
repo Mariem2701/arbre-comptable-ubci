@@ -176,20 +176,19 @@ if next_q is not None:
     st.markdown(f"**➡️ {label}**")
     st.markdown(f"👤 Destinée à : **{service_resp}**")
 
-  if service_connecte == service_resp or service_connecte == "Comptabilité des immobilisations":
-    key = f"q_{next_q}"
-    if qtype == "number":
-        val = st.number_input("Réponse :", min_value=0.0, format="%.2f", key=key)
-    elif qtype == "radio":
-        val = st.radio("Réponse :", options, key=key, index=None)
-    elif qtype == "checkbox":
-        val = st.checkbox("Cocher si applicable", key=key)
+    if service_connecte == service_resp or service_connecte == "Comptabilité des immobilisations":
+        key = f"q_{next_q}"
+        if qtype == "number":
+            val = st.number_input("Réponse :", min_value=0.0, format="%.2f", key=key)
+        elif qtype == "radio":
+            val = st.radio("Réponse :", options, key=key, index=None)
+        elif qtype == "checkbox":
+            val = st.checkbox("Cocher si applicable", key=key)
 
-    if st.button("✅ Valider la réponse"):
-        r[next_q] = val
-        enregistrer_reponse(next_q, label, val, service_connecte)
-        st.rerun()
-
+        if st.button("✅ Valider la réponse"):
+            r[next_q] = val
+            enregistrer_reponse(next_q, label, val, service_connecte)
+            st.rerun()
     else:
         st.info(f"🕒 En attente de réponse du service **{service_resp}**")
 
