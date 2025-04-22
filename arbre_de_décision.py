@@ -184,7 +184,7 @@ if next_q is not None:
             val = st.radio("Réponse :", options, key=key, index=None)
         elif qtype == "checkbox":
             val = st.checkbox("Cocher si applicable", key=key)
-        if st.button("✅ Valider la réponse"):
+  if st.button("✅ Valider la réponse"):
     r[next_q] = val
     enregistrer_reponse(next_q, label, val, service_connecte)
     st.rerun()
