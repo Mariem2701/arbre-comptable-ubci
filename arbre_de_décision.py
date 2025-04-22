@@ -1,16 +1,3 @@
-import json
-
-with open("credentials.json") as f:
-    data = json.load(f)
-
-data["private_key"] = data["private_key"].replace("\n", "\\n")
-
-with open("secrets_toml.txt", "w") as f:
-    f.write("[google_service_account]\n")
-    for k, v in data.items():
-        f.write(f'{k} = "{v}"\n')
-
-
 import streamlit as st
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
@@ -197,11 +184,11 @@ if next_q is not None:
             val = st.radio("Réponse :", options, key=key, index=None)
         elif qtype == "checkbox":
             val = st.checkbox("Cocher si applicable", key=key)
-
         if st.button("✅ Valider la réponse"):
-            r[next_q] = val
-            enregistrer_reponse(next_q, label, val, service_connecte)
-            st.rerun()
+    r[next_q] = val
+    enregistrer_reponse(next_q, label, val, service_connecte)
+    st.rerun()
+
     else:
         st.info(f"🕒 En attente de réponse du service **{service_resp}**")
 
