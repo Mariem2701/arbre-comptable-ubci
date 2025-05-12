@@ -1,220 +1,211 @@
 import streamlit as st
 
-st.set_page_config(page_title="UBCI - Arbre Comptable", layout="centered")
+st.set_page_config(
+    page_title="UBCI – Assistant de Classification Comptable",
+    page_icon="🏷️",
+    layout="centered"
+)
+
 st.title("🏦 UBCI – Arbre de Décision Comptable Logique")
 
-# SERVICES SIMPLIFIÉS
-services = [
-    "Demandeur",
-    "Comptabilité des immobilisations",  # SCI
-    "Fournisseurs / Comptabilité",
-    "Achats",
-    "Contrôle de gestion",
-    "IT / Juridique",
-    "RH"
-]
-service_connecte = st.selectbox("👤 Connecté en tant que :", services)
-
-# SESSION STATE
 if "reponses" not in st.session_state:
     st.session_state.reponses = {}
-if "details_depense" not in st.session_state:
-    st.session_state.details_depense = {}
-if "description_remplie" not in st.session_state:
-    st.session_state.description_remplie = False
-
 r = st.session_state.reponses
 
-# SAISIE DÉPENSE PAR SCI
-st.markdown("### 📝 Description de la dépense")
-if service_connecte == "Comptabilité des immobilisations" and not st.session_state.description_remplie:
-    libelle = st.text_input("📌 Intitulé de la dépense :", key="libelle")
-    description = st.text_area("🧾 Description :", key="description")
-    if st.button("✅ Enregistrer"):
-        if libelle.strip():
-            st.session_state.details_depense = {
-                "libelle": libelle,
-                "description": description
-            }
-            st.session_state.description_remplie = True
-            st.success("✅ Dépense enregistrée.")
+# Réinitialisation
+if st.button("🔄 Réinitialiser l'analyse"):
+    st.session_state.reponses.clear()
+    st.experimental_rerun()
+
+st.markdown("---")
+
+# Arbre de décision complet
+def arbre_decision():
+    if "Q1" not in r:
+        r["Q1"] = st.radio("1. La dépense est-elle supérieure à 500 DT ?", ["Oui", "Non"])
+        st.stop()
+    if r["Q1"] == "Non":
+        st.success("✅ Charge")
+        return
+
+    if "Q2" not in r:
+        r["Q2"] = st.radio("2. La dépense concerne-t-elle un bien physique et tangible ?", ["Oui", "Non"])
+        st.stop()
+    if r["Q2"] == "Oui":
+        branche_corporelle()
+    else:
+        branche_incorporelle()
+
+def branche_corporelle():
+    q = [
+        ("Q3", "3. Est-il destiné à être utilisé pour plus d'un exercice (> 1 an) ?"),
+        ("Q4", "4. L'entreprise bénéficie-t-elle des avantages économiques futurs du bien ?"),
+        ("Q5", "5. Le cout du bien peut-il être mesuré de manière fiable ?"),
+        ("Q6", "6. Les risques et les produits sont-ils transférés à l'entreprise ?")
+    ]
+    for key, question in q:
+        if key not in r:
+            r[key] = st.radio(question, ["Oui", "Non"])
+            st.stop()
+        if r[key] == "Non":
+            st.success("✅ Charge")
+            return
+
+    if "Q7" not in r:
+        r["Q7"] = st.radio("7. La dépense correspond-elle à des frais d’étude ?", ["Oui", "Non"])
+        st.stop()
+
+    if r["Q7"] == "Oui":
+        if "Q8" not in r:
+            r["Q8"] = st.radio("8. Les frais d’étude engagés à l'origine sont-ils directement liés à un actif durable ?", ["Oui", "Non"])
+            st.stop()
+        if r["Q8"] == "Oui":
+            st.success("✅ Immobilisation corporelle")
         else:
-            st.warning("⚠️ Intitulé requis.")
-elif st.session_state.description_remplie:
-    st.info(f"📌 **Dépense** : {st.session_state.details_depense['libelle']}")
-    st.markdown(f"🧾 **Description** : {st.session_state.details_depense['description']}")
-else:
-    st.warning("⏳ En attente de saisie par la Comptabilité des immobilisations.")
-# --- DÉFINITION DE L’ARBRE LOGIQUE ---
-questions = {
-    # COMMUNES
-    0: ("Montant de la dépense (DT)", "number", None, "Demandeur"),
-    1: ("La dépense concerne-t-elle un bien physique et tangible ?", "radio", ["Oui", "Non"], "Comptabilité des immobilisations"),
+            st.success("✅ Charge")
+        return
 
-    # CORPORELLES
-    2: ("Utilisation > 1 an ?", "radio", ["Oui", "Non"], "Demandeur"),
-    3: ("Avantages économiques futurs ?", "radio", ["Oui", "Non"], "Contrôle de gestion"),
-    4: ("Coût mesurable ?", "radio", ["Oui", "Non"], "Fournisseurs / Comptabilité"),
-    5: ("Risques/produits transférés ?", "radio", ["Oui", "Non"], "Achats"),
-    6: ("Nouvelle acquisition ?", "radio", ["Oui", "Non"], "Achats"),
-    7: ("Grosse réparation ≥ 1/4 actif ?", "radio", ["Oui", "Non"], "Comptabilité des immobilisations"),
-    8: ("Réhabilitation ou remplacement cyclique ?", "radio", ["Oui", "Non"], "Comptabilité des immobilisations"),
-    9: ("Identifié dans SAP comme investissement ?", "radio", ["Oui", "Non"], "IT / Juridique"),
-    10: ("Prolonge durée de vie ou augmente performance ?", "radio", ["Oui", "Non"], "Comptabilité des immobilisations"),
-    11: ("Paiement récurrent ou échelonné ?", "radio", ["Récurrent", "Échelonné"], "Fournisseurs / Comptabilité"),
+    if "Q9" not in r:
+        r["Q9"] = st.radio("9. S'agit-il d'une nouvelle acquisition ?", ["Oui", "Non"])
+        st.stop()
 
-    # INCORPORELLES
-    100: ("Élément identifiable ?", "radio", ["Oui", "Non"], "Comptabilité des immobilisations"),
-    101: ("Utilisation prévue > 1 an ?", "radio", ["Oui", "Non"], "Demandeur"),
-    102: ("Contrôle + avantages économiques ?", "radio", ["Oui", "Non"], "Contrôle de gestion"),
-    103: ("Coût mesurable de manière fiable ?", "radio", ["Oui", "Non"], "Fournisseurs / Comptabilité"),
-    104: ("Acquis ou créé en interne ?", "radio", ["Acquis", "Créé en interne"], "Comptabilité des immobilisations"),
+    if r["Q9"] == "Oui":
+        st.success("✅ Immobilisation corporelle")
+        return
 
-    # CRÉATION INTERNE
-    201: ("Recherche ou Développement ?", "radio", ["Recherche", "Développement"], "Comptabilité des immobilisations"),
-    202: ("✔ Faisabilité technique", "checkbox", None, "IT / Juridique"),
-    203: ("✔ Intention d’achever le projet", "checkbox", None, "IT / Juridique"),
-    204: ("✔ Capacité à utiliser ou vendre l’actif", "checkbox", None, "IT / Juridique"),
-    205: ("✔ Avantages économiques futurs probables", "checkbox", None, "Contrôle de gestion"),
-    206: ("✔ Ressources disponibles", "checkbox", None, "Contrôle de gestion"),
-    207: ("✔ Dépenses évaluées de façon fiable", "checkbox", None, "Fournisseurs / Comptabilité"),
+    # Grosse réparation
+    q_repa = [
+        ("Q10", "10. La valeur vénale de la composante >= 1/4 de la valeur de l'actif ?"),
+        ("Q11", "11. L'actif initial est-il identifié dans SAP en tant qu'investissement ?"),
+        ("Q12", "12. Prolonge-t-il la durée de vie de l'élément ou augmente sa performance ?")
+    ]
+    for key, question in q_repa:
+        if key not in r:
+            r[key] = st.radio(question, ["Oui", "Non"])
+            st.stop()
+        if r[key] == "Non":
+            st.success("✅ Charge")
+            return
 
-    # ACQUISITION
-    105: ("L'acquisition concerne-t-elle une licence ?", "radio", ["Oui", "Non"], "IT / Juridique"),
-    106: ("La licence est-elle de nature éphémère ?", "radio", ["Oui", "Non"], "IT / Juridique"),
-    107: ("Prix d’achat ou dépense ?", "radio", ["Prix d'achat", "Dépense"], "Achats"),
-    135: ("✔ Coût du personnel lié à la mise en service", "checkbox", None, "RH"),
-    136: ("✔ Honoraires de mise en service", "checkbox", None, "Comptabilité des immobilisations"),
-    137: ("✔ Tests de bon fonctionnement", "checkbox", None, "Comptabilité des immobilisations"),
-}
-# 🔁 LOGIQUE DE L’ARBRE ET AFFICHAGE PAR SERVICE
-def get_next_question_id():
-    if 0 not in r:
-        return 0
-    if r[0] < 500:
-        return None  # Charge directe, pas d'arbre
-    if 1 not in r:
-        return 1
-    if r[1] == "Oui":
-        for q in [2, 3, 4, 5, 6]:
-            if q not in r:
-                return q
-        if r.get(6) == "Oui":
-            return 11
-        for q in [7, 8, 9, 10, 11]:
-            if q not in r:
-                return q
-    if r[1] == "Non":
-        for q in [100, 101, 102, 103, 104]:
-            if q not in r:
-                return q
-        if r.get(104) == "Créé en interne":
-            if 201 not in r:
-                return 201
-            if r.get(201) == "Recherche":
-                return None  # Fin : charge
-            for q in [202, 203, 204, 205, 206, 207]:
-                if q not in r:
-                    return q
-        elif r.get(104) == "Acquis":
-            if 105 not in r:
-                return 105
-            if r.get(105) == "Oui":
-                if 106 not in r:
-                    return 106
-            elif r.get(105) == "Non":
-                if 107 not in r:
-                    return 107
-                if r.get(107) == "Dépense":
-                    for q in [135, 136, 137]:
-                        if q not in r:
-                            return q
-    return None  # Fin du parcours
+    if "Q13" not in r:
+        r["Q13"] = st.radio("13. S'agit-il d’une réparation ou réhabilitation majeure d'infrastructures ?", ["Réparation", "Réhabilitation"])
+        st.stop()
 
-# 🔍 AFFICHAGE LOGIQUE DE LA QUESTION ACTUELLE
-next_q = get_next_question_id()
-if next_q is not None:
-    label, qtype, options, service_resp = questions[next_q]
+    if r["Q13"] == "Réhabilitation":
+        st.success("✅ Immobilisation corporelle")
+        return
 
-    st.markdown("### 📌 Question actuelle")
-    st.markdown(f"**➡️ {label}**")
-    st.markdown(f"👤 Destinée à : **{service_resp}**")
-
-    if service_connecte == service_resp or service_connecte == "Comptabilité des immobilisations":
-        key = f"q_{next_q}"
-        if qtype == "number":
-            val = st.number_input("Réponse :", min_value=0.0, format="%.2f", key=key)
-        elif qtype == "radio":
-            val = st.radio("Réponse :", options, key=key, index=None)
-        elif qtype == "checkbox":
-            val = st.checkbox("Cocher si applicable", key=key)
-        if st.button("✅ Valider la réponse"):
-            r[next_q] = val
-            st.rerun()
+    if "Q14" not in r:
+        r["Q14"] = st.radio("14. La réparation présente-t-elle un caractère cyclique ?", ["Oui", "Non"])
+        st.stop()
+    if r["Q14"] == "Oui":
+        st.success("✅ Immobilisation corporelle")
     else:
-        st.info(f"🕒 En attente de réponse du service **{service_resp}**")
+        st.success("✅ Charge")
 
-# 👁️ SUIVI GLOBAL POUR LE SCI
-if service_connecte == "Comptabilité des immobilisations":
-    st.markdown("### 📋 Suivi en temps réel")
-    for qid in r:
-        label, _, _, who = questions[qid]
-        st.markdown(f"✅ **{label}** — *{who}* : `{r[qid]}`")
-# ✅ CALCUL DU RÉSULTAT FINAL (réservé SCI)
-if service_connecte == "Comptabilité des immobilisations":
-    st.markdown("### ✅ Résultat final automatique")
+def branche_incorporelle():
+    q = [
+        ("Q15", "15. L’élément est-il identifiable ?"),
+        ("Q16", "16. Est-il destiné à être utilisé pour plus d'un exercice (> 1 an) ?"),
+        ("Q17", "17. L'entreprise contrôle-t-elle l'élément et en retire-t-elle des avantages économiques futurs probables ?"),
+        ("Q18", "18. Le coût peut-il être mesuré de manière fiable ?")
+    ]
+    for key, question in q:
+        if key not in r:
+            r[key] = st.radio(question, ["Oui", "Non"])
+            st.stop()
+        if r[key] == "Non":
+            st.success("✅ Charge")
+            return
 
-    result = None
-    justif = []
+    if "Q19" not in r:
+        r["Q19"] = st.radio("19. Nature de la dépense ?", ["Acquisition", "Création en interne", "Dépense liée à un actif"])
+        st.stop()
 
-    if r.get(0) is not None and r.get(0) < 500:
-        result = "Charge"
-        justif.append("Montant < 500 DT")
-    elif r.get(1) == "Oui":
-        if any(r.get(x) == "Non" for x in [2, 3, 4, 5, 7, 8, 9, 10]):
-            result = "Charge"
-            justif.append("Un ou plusieurs critères corporels manquants")
-        elif r.get(11) == "Récurrent":
-            result = "Charge"
-            justif.append("Paiement récurrent")
-        elif r.get(11) == "Échelonné":
-            result = "Immobilisation corporelle"
-    elif r.get(1) == "Non":
-        if any(r.get(x) == "Non" for x in [100, 101, 102, 103]):
-            result = "Charge"
-            justif.append("Critères incorporels manquants")
-        elif r.get(104) == "Créé en interne":
-            if r.get(201) == "Recherche":
-                result = "Charge"
-                justif.append("Recherche non immobilisable")
-            elif r.get(201) == "Développement":
-                checks = [202, 203, 204, 205, 206, 207]
-                if all(r.get(x) for x in checks):
-                    result = "Immobilisation incorporelle"
-                else:
-                    result = "Charge"
-                    justif.append("Conditions IAS 38 non remplies")
-        elif r.get(104) == "Acquis":
-            if r.get(105) == "Oui" and r.get(106) == "Oui":
-                result = "Charge"
-                justif.append("Licence éphémère")
-            elif r.get(105) == "Oui" and r.get(106) == "Non":
-                result = "Immobilisation incorporelle"
-            elif r.get(105) == "Non":
-                if r.get(107) == "Prix d'achat":
-                    result = "Immobilisation incorporelle"
-                elif r.get(107) == "Dépense":
-                    if any(r.get(x) for x in [135, 136, 137]):
-                        result = "Immobilisation incorporelle"
-                    else:
-                        result = "Charge"
-                        justif.append("Dépense non directement attribuable")
-
-    if result:
-        st.success(f"🏷️ **Résultat** : {result}")
-        if justif:
-            st.markdown("**Justification :**")
-            for j in justif:
-                st.markdown(f"- {j}")
+    if r["Q19"] == "Acquisition":
+        sous_branche_acquisition()
+    elif r["Q19"] == "Création en interne":
+        sous_branche_creation()
     else:
-        st.info("⏳ Résultat en attente – toutes les réponses nécessaires ne sont pas encore remplies.")
+        sous_branche_depense_liee()
+
+def sous_branche_acquisition():
+    q = [
+        ("Q20", "1. L'acquisition concerne-t-elle une licence ?"),
+        ("Q21", "2. L'actif est-il hébergé sur une infrastructure contrôlée par l’entreprise ?"),
+        ("Q22", "3. L’entreprise dispose-t-elle d’un droit d’usage distinct et exclusif ?"),
+        ("Q23", "4. Le droit d’usage est-il permanent ou longue durée (≥ 3 ans) ?"),
+        ("Q24", "5. Le contrat prévoit-il un abonnement/redevance/paiement récurrent ?")
+    ]
+    for key, question in q:
+        if key not in r:
+            r[key] = st.radio(question, ["Oui", "Non"])
+            st.stop()
+        if key == "Q24":
+            if r[key] == "Oui":
+                st.success("✅ Charge")
+            else:
+                st.success("✅ Immobilisation incorporelle")
+        elif r[key] == "Non":
+            st.success("✅ Charge")
+            return
+
+def sous_branche_creation():
+    if "Q25" not in r:
+        r["Q25"] = st.radio("1. Dépenses de recherche ou développement ?", ["Recherche", "Développement"])
+        st.stop()
+    if r["Q25"] == "Recherche":
+        st.success("✅ Charge")
+        return
+
+    if "Q26" not in r:
+        r["Q26"] = st.radio("2. Toutes les conditions IAS 38.57 sont-elles remplies ?", ["Oui", "Non"])
+        st.stop()
+    if r["Q26"] == "Oui":
+        st.success("✅ Immobilisation incorporelle")
+    else:
+        st.success("✅ Charge")
+
+def sous_branche_depense_liee():
+    if "Q27" not in r:
+        r["Q27"] = st.radio("1. S'agit-il d'une dépense ou maintenance ?", ["Dépense", "Maintenance"])
+        st.stop()
+    if r["Q27"] == "Dépense":
+        if "Q28" not in r:
+            r["Q28"] = st.radio("2. La dépense est-elle directement attribuable à la préparation de l'actif ?", ["Oui", "Non"])
+            st.stop()
+        if r["Q28"] == "Oui":
+            st.success("✅ Immobilisation corporelle")
+        else:
+            st.success("✅ Charge")
+        return
+    else:
+        if "Q29" not in r:
+            r["Q29"] = st.radio("3. La dépense est-elle réalisée avant ou après mise en service ?", ["Avant", "Après"])
+            st.stop()
+        if r["Q29"] == "Après":
+            if "Q30" not in r:
+                r["Q30"] = st.radio("4. Maintenance évolutive ou corrective ?", ["Évolutive", "Corrective"])
+                st.stop()
+            if r["Q30"] == "Évolutive":
+                st.success("✅ Immobilisation corporelle")
+            else:
+                st.success("✅ Charge")
+        else:
+            if "Q31" not in r:
+                r["Q31"] = st.radio("5. La dépense est-elle directement nécessaire pour rendre l’actif opérationnel ?", ["Oui", "Non"])
+                st.stop()
+            if r["Q31"] == "Oui":
+                st.success("✅ Immobilisation corporelle")
+            else:
+                st.success("✅ Charge")
+
+arbre_decision()
+
+with st.expander("📋 Suivi des réponses"):
+    if r:
+        for k, v in r.items():
+            st.markdown(f"- **{k}** : `{v}`")
+    else:
+        st.info("Aucune réponse pour le moment.")
+
