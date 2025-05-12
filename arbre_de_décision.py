@@ -46,23 +46,54 @@ elif st.session_state.description_remplie:
 else:
     st.warning("⏳ En attente de saisie par la Comptabilité des immobilisations.")
 
-# === QUESTIONS (Exemple partiel pour démarrer) ===
+# --- NOUVEL ARBRE LOGIQUE ---
 questions = {
-    1: ("La dépense est-elle supérieure à 500 DT ?", "radio", ["Oui", "Non"], "Demandeur"),
-    2: ("La dépense concerne-t-elle un bien physique et tangible ?", "radio", ["Oui", "Non"], "Demandeur"),
-    3: ("Est-il destiné à être utilisé pour plus d'un exercice (> 1 an) ?", "radio", ["Oui", "Non"], "Demandeur"),
-    4: ("L'entreprise bénéficie-t-elle des avantages économiques futurs du bien ?", "radio", ["Oui", "Non"], "Contrôle de gestion"),
-    5: ("Le cout du bien peut-il être mesuré de manière fiable ?", "radio", ["Oui", "Non"], "Fournisseurs / Comptabilité"),
-    6: ("Les risques et les produits sont-ils transférés à l'entreprise ?", "radio", ["Oui", "Non"], "Achats"),
-    7: ("La dépense correspond-elle à des frais d’étude ?", "radio", ["Oui", "Non"], "Comptabilité des immobilisations"),
-    8: ("Les frais d’étude sont-ils directement liés à un actif durable ?", "radio", ["Oui", "Non"], "Contrôle de gestion"),
-    9: ("S'agit-il d'une nouvelle acquisition ?", "radio", ["Oui", "Non"], "Achats"),
-    10: ("La valeur vénale de la composante >= 1/4 de l'actif ?", "radio", ["Oui", "Non"], "Comptabilité des immobilisations"),
-    11: ("L'actif est-il identifié dans SAP comme investissement ?", "radio", ["Oui", "Non"], "IT / Juridique"),
-    12: ("Prolonge-t-il la durée de vie ou augmente sa performance ?", "radio", ["Oui", "Non"], "Contrôle de gestion"),
-    13: ("S'agit-il d’une réparation ou réhabilitation majeure ?", "radio", ["Réhabilitation", "Réparation"], "Comptabilité des immobilisations"),
-    14: ("La réparation est-elle cyclique ?", "radio", ["Oui", "Non"], "Comptabilité des immobilisations"),
-    # INCORPORELLES à partir de 15... jusqu'à 64 (à insérer ensuite)
+    0: ("La dépense est-elle supérieure à 500 DT ?", "radio", ["Oui", "Non"], "Demandeur"),
+    1: ("La dépense concerne-t-elle un bien physique et tangible ?", "radio", ["Oui", "Non"], "Comptabilité des immobilisations"),
+
+    # Immobilisations corporelles
+    2: ("Est-il destiné à être utilisé pour plus d'un exercice (> 1 an) ?", "radio", ["Oui", "Non"], "Demandeur"),
+    3: ("L'entreprise bénéficie-t-elle des avantages économiques futurs du bien ?", "radio", ["Oui", "Non"], "Contrôle de gestion"),
+    4: ("Le cout du bien peut-il être mesuré de manière fiable ?", "radio", ["Oui", "Non"], "Fournisseurs / Comptabilité"),
+    5: ("Les risques et les produits sont-ils transférés à l'entreprise ?", "radio", ["Oui", "Non"], "Achats"),
+    6: ("La dépense correspond-elle à des frais d’étude ?", "radio", ["Oui", "Non"], "Achats"),
+    7: ("Les frais d’étude engagés sont-ils directement liés à un actif durable ?", "radio", ["Oui", "Non"], "Comptabilité des immobilisations"),
+    8: ("S'agit-il d'une nouvelle acquisition ?", "radio", ["Oui", "Non"], "Achats"),
+    9: ("La valeur vénale de la composante >= 1/4 de la valeur de l'actif ?", "radio", ["Oui", "Non"], "Comptabilité des immobilisations"),
+    10: ("L'actif initial est-il identifié dans SAP en tant qu'investissement ?", "radio", ["Oui", "Non"], "IT / Juridique"),
+    11: ("Prolonge-t-il la durée de vie ou augmente sa performance ?", "radio", ["Oui", "Non"], "Comptabilité des immobilisations"),
+    12: ("S'agit-il d’une réparation ou réhabilitation majeure d'infrastructures ?", "radio", ["Réparation", "Réhabilitation majeure"], "Comptabilité des immobilisations"),
+    13: ("La réparation présente-t-elle un caractère cyclique ?", "radio", ["Oui", "Non"], "Comptabilité des immobilisations"),
+
+    # Immobilisations incorporelles
+    100: ("L’élément est-il identifiable ?", "radio", ["Oui", "Non"], "Comptabilité des immobilisations"),
+    101: ("Est-il destiné à être utilisé pour plus d'un exercice ( > 1 an ) ?", "radio", ["Oui", "Non"], "Demandeur"),
+    102: ("L'entreprise contrôle-t-elle l'élément et en retire-t-elle des avantages économiques futurs probables ?", "radio", ["Oui", "Non"], "Contrôle de gestion"),
+    103: ("Le cout peut-il être mesuré de manière fiable ?", "radio", ["Oui", "Non"], "Fournisseurs / Comptabilité"),
+    104: ("S'agit-il d'une acquisition, création en interne ou dépense liée à un actif ?", "radio", ["Acquisition", "Création en interne", "Dépense liée à un actif"], "Comptabilité des immobilisations"),
+
+    # Sous-branche Acquisition
+    105: ("L'acquisition concerne-t-elle une licence ?", "radio", ["Oui", "Non"], "IT / Juridique"),
+    106: ("L'actif est-il hébergé sur une infrastructure contrôlée par l’entreprise ?", "radio", ["Oui", "Non"], "IT / Juridique"),
+    107: ("L’entreprise dispose-t-elle d’un droit d’usage distinct et exclusif de l'actif ?", "radio", ["Oui", "Non"], "IT / Juridique"),
+    108: ("Le droit d’usage est-il permanent (licence perpétuelle) ou accordé pour une longue période ?", "radio", ["Oui", "Non"], "IT / Juridique"),
+    109: ("Le contrat prévoit-il un abonnement/redevance/paiement récurrent ?", "radio", ["Oui", "Non"], "Fournisseurs / Comptabilité"),
+
+    # Sous-branche Création en interne
+    201: ("Dépenses de recherche ou développement ?", "radio", ["Recherche", "Développement"], "Comptabilité des immobilisations"),
+    202: ("Faisabilité technique ?", "checkbox", None, "IT / Juridique"),
+    203: ("Intention d’achever le projet ?", "checkbox", None, "IT / Juridique"),
+    204: ("Capacité à utiliser ou vendre l’actif ?", "checkbox", None, "IT / Juridique"),
+    205: ("Avantages économiques futurs probables ?", "checkbox", None, "Contrôle de gestion"),
+    206: ("Ressources disponibles ?", "checkbox", None, "Contrôle de gestion"),
+    207: ("Dépenses évaluées de façon fiable ?", "checkbox", None, "Fournisseurs / Comptabilité"),
+
+    # Sous-branche Dépenses liées à un actif
+    301: ("S'agit-il d'une dépense de maintenance ?", "radio", ["Dépense", "Maintenance"], "Comptabilité des immobilisations"),
+    302: ("La dépense est-elle directement attribuables à la préparation de l'actif en vue de son utilisation ?", "radio", ["Oui", "Non"], "Comptabilité des immobilisations"),
+    303: ("La dépense concerne-t-elle des opérations de maintenance réalisées avant ou après la mise en service de l’actif ?", "radio", ["Avant", "Après"], "Comptabilité des immobilisations"),
+    304: ("La dépense concerne-t-elle une maintenance évolutive ou corrective ?", "radio", ["Évolutive", "Corrective"], "Comptabilité des immobilisations"),
+    305: ("La dépense est-elle directement nécessaire pour rendre l’actif opérationnel ?", "radio", ["Oui", "Non"], "Comptabilité des immobilisations")
 }
 
 # === LOGIQUE DE NAVIGATION ===
