@@ -1,196 +1,124 @@
 import streamlit as st
+import json
+import os
+from datetime import datetime
 
-st.set_page_config(page_title="UBCI - Arbre Comptable", layout="centered")
-st.title("🏦 UBCI – Arbre de Décision Comptable Logique")
-
-# SERVICES SIMPLIFIÉS
-services = [
+# Constants
+DATA_FILE = "responses.json"
+SERVICES = [
     "Demandeur",
     "Comptabilité des immobilisations",
-    "Fournisseurs / Comptabilité",
+    "Comptabilité des fournisseurs",
     "Achats",
     "Contrôle de gestion",
-    "IT / Juridique",
+    "IT",
+    "Juridique",
     "RH"
 ]
-service_connecte = st.selectbox("👤 Connecté en tant que :", services)
 
-# SESSION STATE
-if "reponses" not in st.session_state:
-    st.session_state.reponses = {}
-if "details_depense" not in st.session_state:
-    st.session_state.details_depense = {}
-if "description_remplie" not in st.session_state:
-    st.session_state.description_remplie = False
+# Load or initialize data
+def load_data():
+    if os.path.exists(DATA_FILE):
+        with open(DATA_FILE, "r") as f:
+            return json.load(f)
+    return {}
 
-r = st.session_state.reponses
+def save_data(data):
+    with open(DATA_FILE, "w") as f:
+        json.dump(data, f, indent=4)
 
-# SAISIE DÉPENSE PAR SCI
-st.markdown("### 📝 Description de la dépense")
-if service_connecte == "Comptabilité des immobilisations" and not st.session_state.description_remplie:
-    libelle = st.text_input("📌 Intitulé de la dépense :", key="libelle")
-    description = st.text_area("🧾 Description :", key="description")
-    if st.button("✅ Enregistrer"):
-        if libelle.strip():
-            st.session_state.details_depense = {
-                "libelle": libelle,
-                "description": description
-            }
-            st.session_state.description_remplie = True
-            st.success("✅ Dépense enregistrée.")
+data = load_data()
+
+# Select user/service
+st.sidebar.title("Identification")
+user = st.sidebar.text_input("Nom de l'utilisateur")
+service = st.sidebar.selectbox("Votre service", SERVICES)
+
+if not user:
+    st.warning("Veuillez entrer votre nom dans la barre latérale pour commencer.")
+    st.stop()
+
+# User key
+user_key = f"{user} - {service}"
+if user_key not in data:
+    data[user_key] = {"service": service, "responses": {}, "timestamp": str(datetime.now())}
+
+st.title("Arbre de Décision - Classification des Dépenses")
+
+# Helper to show question and save response
+def ask_question(q_id, question, options):
+    response = st.radio(question, options, key=q_id)
+    data[user_key]["responses"][q_id] = response
+    save_data(data)
+    return response
+
+# Start decision tree
+q1 = ask_question("q1", "1- La dépense est-elle supérieure à 500 DT ?", ["Oui", "Non"])
+if q1 == "Non":
+    st.success("=> Charge")
+    st.stop()
+
+q2 = ask_question("q2", "2- La dépense concerne-t-elle un bien physique et tangible ?", ["Oui", "Non"])
+if q2 == "Oui":
+    st.subheader("Branche Immobilisation Corporelle")
+    q3 = ask_question("q3", "3- Est-il destiné à être utilisé pour plus d'un exercice (> 1 an) ?", ["Oui", "Non"])
+    if q3 == "Non": st.success("=> Charge"); st.stop()
+    q4 = ask_question("q4", "4- L'entreprise bénéficie-t-elle des avantages économiques futurs ?", ["Oui", "Non"])
+    if q4 == "Non": st.success("=> Charge"); st.stop()
+    q5 = ask_question("q5", "5- Le cout peut-il être mesuré de manière fiable ?", ["Oui", "Non"])
+    if q5 == "Non": st.success("=> Charge"); st.stop()
+    q6 = ask_question("q6", "6- Les risques et produits sont-ils transférés ?", ["Oui", "Non"])
+    if q6 == "Non": st.success("=> Charge"); st.stop()
+    q7 = ask_question("q7", "7- La dépense correspond-elle à des frais d'étude ?", ["Oui", "Non"])
+    if q7 == "Oui":
+        q8 = ask_question("q8", "8- Les frais d'étude sont-ils liés à un actif durable ?", ["Oui", "Non"])
+        if q8 == "Oui": st.success("=> Immobilisation corporelle")
+        else: st.success("=> Charge")
+        st.stop()
+    else:
+        q9 = ask_question("q9", "9- S'agit-il d'une nouvelle acquisition ?", ["Oui", "Non"])
+        if q9 == "Oui":
+            st.success("=> Immobilisation corporelle")
+            st.stop()
         else:
-            st.warning("⚠️ Intitulé requis.")
-elif st.session_state.description_remplie:
-    st.info(f"📌 **Dépense** : {st.session_state.details_depense['libelle']}")
-    st.markdown(f"🧾 **Description** : {st.session_state.details_depense['description']}")
+            st.subheader("Sous-branche Grosse Réparation")
+            q10 = ask_question("q10", "10- Valeur vénale composante >= 1/4 actif ?", ["Oui", "Non"])
+            if q10 == "Non": st.success("=> Charge"); st.stop()
+            q11 = ask_question("q11", "11- Actif identifié dans SAP comme investissement ?", ["Oui", "Non"])
+            if q11 == "Non": st.success("=> Charge"); st.stop()
+            q12 = ask_question("q12", "12- Prolonge la durée de vie ou améliore la performance ?", ["Oui", "Non"])
+            if q12 == "Non": st.success("=> Charge"); st.stop()
+            q13 = ask_question("q13", "13- Réparation ou réhabilitation majeure ?", ["Réparation", "Réhabilitation majeure"])
+            if q13 == "Réhabilitation majeure":
+                st.success("=> Immobilisation corporelle")
+                st.stop()
+            q14 = ask_question("q14", "14- Réparation cyclique ?", ["Oui", "Non"])
+            if q14 == "Oui": st.success("=> Immobilisation corporelle")
+            else: st.success("=> Charge")
+            st.stop()
 else:
-    st.warning("⏳ En attente de saisie par la Comptabilité des immobilisations.")
+    st.subheader("Branche Immobilisation Incorporelle")
+    q15 = ask_question("q15", "15- L'élément est-il identifiable ?", ["Oui", "Non"])
+    if q15 == "Non": st.success("=> Charge"); st.stop()
+    q16 = ask_question("q16", "16- Utilisé pour plus d'un exercice ?", ["Oui", "Non"])
+    if q16 == "Non": st.success("=> Charge"); st.stop()
+    q17 = ask_question("q17", "17- Contrôle et avantages futurs ?", ["Oui", "Non"])
+    if q17 == "Non": st.success("=> Charge"); st.stop()
+    q18 = ask_question("q18", "18- Coût mesurable ?", ["Oui", "Non"])
+    if q18 == "Non": st.success("=> Charge"); st.stop()
+    q19 = ask_question("q19", "19- Nature de la dépense ?", ["Acquisition", "Création en interne", "Dépense liée à un actif"])
+    st.success("La suite des branches internes n'est pas encore déployée dans ce prototype.")
+    st.stop()
 
-# --- NOUVEL ARBRE LOGIQUE ---
-questions = {
-    0: ("La dépense est-elle supérieure à 500 DT ?", "radio", ["Oui", "Non"], "Demandeur"),
-    1: ("La dépense concerne-t-elle un bien physique et tangible ?", "radio", ["Oui", "Non"], "Comptabilité des immobilisations"),
+# Admin view
+if service == "Comptabilité des immobilisations":
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("Vue Comptabilité Immobilisations")
+    if st.sidebar.button("Afficher les réponses de tous les services"):
+        st.header("Toutes les réponses enregistrées")
+        for user, record in data.items():
+            st.subheader(user)
+            for qid, ans in record["responses"].items():
+                st.write(f"**{qid}**: {ans}")
 
-    # Immobilisations corporelles
-    2: ("Est-il destiné à être utilisé pour plus d'un exercice (> 1 an) ?", "radio", ["Oui", "Non"], "Demandeur"),
-    3: ("L'entreprise bénéficie-t-elle des avantages économiques futurs du bien ?", "radio", ["Oui", "Non"], "Contrôle de gestion"),
-    4: ("Le cout du bien peut-il être mesuré de manière fiable ?", "radio", ["Oui", "Non"], "Fournisseurs / Comptabilité"),
-    5: ("Les risques et les produits sont-ils transférés à l'entreprise ?", "radio", ["Oui", "Non"], "Achats"),
-    6: ("La dépense correspond-elle à des frais d’étude ?", "radio", ["Oui", "Non"], "Achats"),
-    7: ("Les frais d’étude engagés sont-ils directement liés à un actif durable ?", "radio", ["Oui", "Non"], "Comptabilité des immobilisations"),
-    8: ("S'agit-il d'une nouvelle acquisition ?", "radio", ["Oui", "Non"], "Achats"),
-    9: ("La valeur vénale de la composante >= 1/4 de la valeur de l'actif ?", "radio", ["Oui", "Non"], "Comptabilité des immobilisations"),
-    10: ("L'actif initial est-il identifié dans SAP en tant qu'investissement ?", "radio", ["Oui", "Non"], "IT / Juridique"),
-    11: ("Prolonge-t-il la durée de vie ou augmente sa performance ?", "radio", ["Oui", "Non"], "Comptabilité des immobilisations"),
-    12: ("S'agit-il d’une réparation ou réhabilitation majeure d'infrastructures ?", "radio", ["Réparation", "Réhabilitation majeure"], "Comptabilité des immobilisations"),
-    13: ("La réparation présente-t-elle un caractère cyclique ?", "radio", ["Oui", "Non"], "Comptabilité des immobilisations"),
-
-    # Immobilisations incorporelles
-    100: ("L’élément est-il identifiable ?", "radio", ["Oui", "Non"], "Comptabilité des immobilisations"),
-    101: ("Est-il destiné à être utilisé pour plus d'un exercice ( > 1 an ) ?", "radio", ["Oui", "Non"], "Demandeur"),
-    102: ("L'entreprise contrôle-t-elle l'élément et en retire-t-elle des avantages économiques futurs probables ?", "radio", ["Oui", "Non"], "Contrôle de gestion"),
-    103: ("Le cout peut-il être mesuré de manière fiable ?", "radio", ["Oui", "Non"], "Fournisseurs / Comptabilité"),
-    104: ("S'agit-il d'une acquisition, création en interne ou dépense liée à un actif ?", "radio", ["Acquisition", "Création en interne", "Dépense liée à un actif"], "Comptabilité des immobilisations"),
-
-    # Sous-branche Acquisition
-    105: ("L'acquisition concerne-t-elle une licence ?", "radio", ["Oui", "Non"], "IT / Juridique"),
-    106: ("L'actif est-il hébergé sur une infrastructure contrôlée par l’entreprise ?", "radio", ["Oui", "Non"], "IT / Juridique"),
-    107: ("L’entreprise dispose-t-elle d’un droit d’usage distinct et exclusif de l'actif ?", "radio", ["Oui", "Non"], "IT / Juridique"),
-    108: ("Le droit d’usage est-il permanent (licence perpétuelle) ou accordé pour une longue période ?", "radio", ["Oui", "Non"], "IT / Juridique"),
-    109: ("Le contrat prévoit-il un abonnement/redevance/paiement récurrent ?", "radio", ["Oui", "Non"], "Fournisseurs / Comptabilité"),
-
-    # Sous-branche Création en interne
-    201: ("Dépenses de recherche ou développement ?", "radio", ["Recherche", "Développement"], "Comptabilité des immobilisations"),
-    202: ("Faisabilité technique ?", "checkbox", None, "IT / Juridique"),
-    203: ("Intention d’achever le projet ?", "checkbox", None, "IT / Juridique"),
-    204: ("Capacité à utiliser ou vendre l’actif ?", "checkbox", None, "IT / Juridique"),
-    205: ("Avantages économiques futurs probables ?", "checkbox", None, "Contrôle de gestion"),
-    206: ("Ressources disponibles ?", "checkbox", None, "Contrôle de gestion"),
-    207: ("Dépenses évaluées de façon fiable ?", "checkbox", None, "Fournisseurs / Comptabilité"),
-
-    # Sous-branche Dépenses liées à un actif
-    301: ("S'agit-il d'une dépense de maintenance ?", "radio", ["Dépense", "Maintenance"], "Comptabilité des immobilisations"),
-    302: ("La dépense est-elle directement attribuables à la préparation de l'actif en vue de son utilisation ?", "radio", ["Oui", "Non"], "Comptabilité des immobilisations"),
-    303: ("La dépense concerne-t-elle des opérations de maintenance réalisées avant ou après la mise en service de l’actif ?", "radio", ["Avant", "Après"], "Comptabilité des immobilisations"),
-    304: ("La dépense concerne-t-elle une maintenance évolutive ou corrective ?", "radio", ["Évolutive", "Corrective"], "Comptabilité des immobilisations"),
-    305: ("La dépense est-elle directement nécessaire pour rendre l’actif opérationnel ?", "radio", ["Oui", "Non"], "Comptabilité des immobilisations")
-}
-
-# === LOGIQUE DE NAVIGATION ===
-def get_next_question_id():
-    r = st.session_state.reponses
-
-    if 1 not in r:
-        return 1
-    if r[1] == "Non":
-        return None
-    if 2 not in r:
-        return 2
-    if r[2] == "Oui":
-        for q in range(3, 7):
-            if q not in r:
-                return q
-        if r.get(7) == "Oui":
-            return 8
-        elif r.get(7) == "Non":
-            if 9 not in r:
-                return 9
-            if r[9] == "Non":
-                for q in range(10, 15):
-                    if q not in r:
-                        return q
-    elif r[2] == "Non":
-        return 15  # début des incorporelles
-    return None
-
-# === AFFICHAGE QUESTION ===
-next_q = get_next_question_id()
-if next_q is not None:
-    label, qtype, options, service_resp = questions[next_q]
-
-    st.markdown("### 📌 Question actuelle")
-    st.markdown(f"**➡️ {label}**")
-    st.markdown(f"👤 Destinée à : **{service_resp}**")
-
-    if service_connecte == service_resp or service_connecte == "Comptabilité des immobilisations":
-        key = f"q_{next_q}"
-        if qtype == "number":
-            val = st.number_input("Réponse :", min_value=0.0, format="%.2f", key=key)
-        elif qtype == "radio":
-            val = st.radio("Réponse :", options, key=key, index=None)
-        elif qtype == "checkbox":
-            val = st.checkbox("Cocher si applicable", key=key)
-        if st.button("✅ Valider la réponse"):
-            r[next_q] = val
-            st.rerun()
-    else:
-        st.info(f"🕒 En attente de réponse du service **{service_resp}**")
-
-# === SUIVI GLOBAL ===
-if service_connecte == "Comptabilité des immobilisations":
-    st.markdown("### 📋 Suivi en temps réel")
-    for qid in sorted(r):
-        label, _, _, who = questions.get(qid, ("(Question inconnue)", "", "", ""))
-        st.markdown(f"✅ **{label}** — *{who}* : `{r[qid]}`")
-
-# === CALCUL AUTOMATIQUE DU RÉSULTAT FINAL (extrait simplifié) ===
-def calculer_resultat_final():
-    result = None
-    justif = []
-    r = st.session_state.reponses
-
-    if r.get(1) == "Non":
-        result = "Charge"
-        justif.append("Montant < 500 DT")
-    elif r.get(2) == "Oui":
-        if any(r.get(x) == "Non" for x in [3, 4, 5, 6]):
-            result = "Charge"
-            justif.append("Critères non remplis pour immobilisation corporelle")
-        elif r.get(7) == "Oui" and r.get(8) == "Non":
-            result = "Charge"
-            justif.append("Frais d’étude non liés à un actif durable")
-        elif r.get(9) == "Oui":
-            result = "Immobilisation corporelle"
-        elif r.get(13) == "Réhabilitation":
-            result = "Immobilisation corporelle"
-        elif r.get(14) == "Oui":
-            result = "Immobilisation corporelle"
-        elif r.get(14) == "Non":
-            result = "Charge"
-            justif.append("Réparation ponctuelle")
-    # Ajout des cas pour incorporelles à venir ici…
-    return result, justif
-
-# === AFFICHAGE RÉSULTAT ===
-if service_connecte == "Comptabilité des immobilisations":
-    st.markdown("### ✅ Résultat final automatique")
-    result, justif = calculer_resultat_final()
-    if result:
-        st.success(f"🏷️ **Résultat** : {result}")
-        if justif:
-            st.markdown("**Justification :**")
-            for j in justif:
-                st.markdown(f"- {j}")
-    else:
-        st.info("⏳ Résultat en attente – toutes les réponses nécessaires ne sont pas encore remplies.")
 
